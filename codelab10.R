@@ -296,3 +296,25 @@ results.comparison <- tibble(
 
 
 
+
+
+
+# Get MOE from simulation at n = 2000, p = 0.39
+moe.sim.2000 <- n.p.sim.results |>
+  filter(n == 2000, p == 0.39) |>
+  pull(moe)
+
+# Wilson MOE at same values
+moe.wilson.2000 <- wilson.margin(2000, 0.39)
+
+# Create formatted comparison table
+results.comparison <- tibble(
+  Method = c(
+    "Simulation (n = 2000, p = 0.39)",
+    "Wilson (n = 2000, p = 0.39)"
+  ),
+  MOE = c(moe.sim.2000, moe.wilson.2000)
+) |>
+  mutate(MOE = round(MOE, 6))
+
+
