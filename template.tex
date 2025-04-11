@@ -75,13 +75,13 @@
 \begin{document}
 
 \vspace{-1in}
-\title{Lab XX -- MATH 240 -- Computational Statistics}
+\title{Lab 10 -- MATH 240 -- Computational Statistics}
 
 \author{
-  First Author \\
-  Affiliation  \\
-  Department  \\
-  {\tt email@domain}
+  Jake Schneider \\
+  Colgate University  \\
+  Mathematics  \\
+  {\tt jdschneider@colgate.edu}
 }
 
 \date{}
@@ -92,76 +92,122 @@
 %\raggedcolumns % If your spacing gets messed up try uncommenting 
                 % this line
 \begin{abstract}
-This document provides a basic template for the 2-page labs we will complete each week. Here, briefly summarize what you did and why it might be helpful. Provide all the top-line conclusions, but avoid providing \emph{all} the details. Results should be limited to ``we show X, Y, and Z."
+This lab examines margin of error(MOE) by investigating the accuracy and reliability of Gallup's reported polling statistics. Using a Gallup poll from February 2025 as a case study, we apply both simulation based and theoretical methods to asses Gallup's claims regarding MOE at various sample sizes. Specifically, we simulate polling outcomes and analyze how MOE changes with sample size and population proportion, providing a data driven evaluation of Gallup's stated confidence intervals. 
 \end{abstract}
 
-\noindent \textbf{Keywords:} What topics does the lab cover concerning class? List 3-4 key terms here, separated by semicolons.
+\noindent \textbf{Keywords:} Margin of Error; Wilson Interval; Resampling
 
 \section{Introduction}
-Provide an overarching summary of what you're talking about. In this section, you introduce the idea to the reader, and your goal is to pull them in. What's the mystery you aim to solve?
+In the document \textit{"How Are Polls Conducted?"}, Gallup outlines its process for selecting participants and conducting national surveys. This document is included at the bottom of the article \href{https://news.gallup.com/poll/101872/how-does-gallup-polling-work.aspx}{Gallup: How Does Gallup Polling Work?}. Near the end of this document Gallup stated that a sample size of 1000 adults is \textit{"highly likely"} to be accurate within a MOE of $\pm 4\%$ and that doubling the sample size to 2000 reduces the MOE to $\pm 2\%$.
 
-You want to provide enough background to understand the context of the work. Specifically, what is the question you are addressing? If it applies, describe what information currently exists about this problem, including citations, and explain how the question you're answering complements this work.
+To better analyze these claims we analyze top-line results from a February 3-16, 2025 poll that included 1004 adults aged 18 and older across the United States. The study revealed that 39\% of respondents were satisfied with the position of the United States today, 59\% were dissatisfied and 2\% had no opinion. Gallup reported a $\pm 4\%$ MOE for this poll. 
 
-Provide a roadmap of the structure of the paper. 
+To evaluate the accuracy of these claims we implement four approaches: (1) a simulation assuming a known population proportion, (2) resampling from a synthetic data set reflecting oberved results, (3) a large scale simulation over varying values of sample size ($n$) and proportion ($p$), and (4) a theoretical derivation of MOE using the Wilson score interval. 
 
-\subsection{Intro Subsection}
-You might need/want to discuss the topics in subsections. Or, you may have multiple questions.
-
-\begin{Figure}
-\includegraphics{penguins.pdf}
-\captionof{figure}{This is a figure!} \label{fig:penguins}
-\end{Figure}
-
-\begin{Figure}
-% latex table generated in R 4.3.3 by xtable 1.8-4 package
-% Tue Apr  1 07:26:31 2025
-%\begin{table}[H]% YOU NEED TO REPLACE THIS WITH FIGURE
-\centering
-\begin{tabular}{lrrrr}
-  \hline
-species & Mean & Median & SD & IQR \\ 
-  \hline
-Adelie & 3700.66 & 3700.00 & 458.57 & 650.00 \\ 
-  Chinstrap & 3733.09 & 3700.00 & 384.34 & 462.50 \\ 
-  Gentoo & 5076.02 & 5000.00 & 504.12 & 800.00 \\ 
-   \hline
-\end{tabular}
-%\caption{This is a table.} % YOU NEED TO CHANGE THIS TO captionof
-\captionof{table}{This is a table.} 
-\label{tab:penguins}
-%\end{table} % YOU NEED TO REPLACE THIS WITH FIGURE
-\end{Figure}
 
 \section{Methods}
-Describe the data you are working with, if applicable. Describe the specific process you will follow to answer the question at hand. This does not mean you should write something like this.
-\begin{quote}
-\textit{I did this and then I did that and then I did this other thing and then..., and then..., and then...}
-\end{quote}
-Instead, it should provide a clear and concise narrative that flows from the problem specification in the Introduction to how you will approach answering it. This is where I would expect to see some citations for \texttt{R} packages you will use to conduct the statistical analysis reported in the Results section.
+\subsection{Basic Simulation}
+Our first method to analyze the MOE assumes that the true proportion of people satisfied with the position of the United States is 39\%. Under this assumption, we used the \verb|rbinom()| function to simulate 10000 polls of the same sample size with replacement. 
+We then repeated the simulation doubling the sample size to evaluate Gallup's claim that increasing the sample size to 2000 reduces the MOE to $\pm 2\%$. These results were then compared to Gallup's reported values using a histogram, desnity plot and a table.
+
+\subsection{Resampling}
+In the previous method, we assumed a true population proportion of 39\%, but in reality, the true population proportion is unknown. To address this we utilize resampling. To simulate the data reported in the poll we created a tibble that was representative of the proportions reported in the study and took 5000 resamples with replacement, maintaining the same sample size of 1004. However, a limitation of this method is that we are restricted to the original sample size and can't simulate the effects of larger samples. We reported these results both graphically and numerically using a histogram, density plot, and table.  
+
+\subsection{Simualation over $n$ and $p$}
+In this method we explored how $n$ and $p$ can influence the MOE. To do this we created a grid of $n$ values ranging from 100 to 3000 in increments of 10 and $p$ values ranging from 0.01 to 0.99 in increments of 0.01. For each $(n,p)$ pair we conducted, 10000 simulation and computed the MOE as half the width of the middle 95\% of the sample proportions. We visualized our results with a heat map to help us visual how $n$ and $p$ impact MOE.
+
+\subsection{Wilson Margin of Error}
+To complement our simulation based approach, we computed the MOE using the Wilson score interval, which is a theoretical calculation derived from the Central Limit Theorem(CLT). As before, created a grid for values of $n$ from 100 to 2000 (in increments of 10) and $p$ ranging from 0.01 to 0.99 (in increments of 0.01). For each $(n,p)$ pair, we calculated the Wilson MOE and visualized our results with another heat map. According to the CLT, the sampling distribution of the sample proportion $\hat{p}$ is approximately normal:
+$$
+\hat{p} \sim N\left(p, \sqrt{\frac{p(1-p)}{n}}\right)
+$$
+Through some algebra this leads to a classical margin of error at 95\% confidence. Solving for $p$ using a quadratic equation results in the Wilson score interval. The corresponding MOE is:
+\[
+MOE = z_{1 - \alpha/2} \cdot \frac{
+\sqrt{n\hat{p}(1 - \hat{p}) + \frac{z^2_{1 - \alpha/2}}{4}}
+}{
+n + z^2_{1 - \alpha/2}
+}
+\]
 
 
-\subsection{Methods Subsection}
-Much like the Introduction, subsections can be helpful for the Methods section. For example, you might describe data collection and the statistical analyses of the collected data in different subsections. Or, you may have different questions that require distinct methods. 
 
 \section{Results}
-Tie together the Introduction -- where you introduce the problem at hand -- and the methods --  what you propose to do to answer the question. Present your data, the results of your analyses, and how each reported aspect contributes to answering the question. This section should include table(s), statistic(s), and graphical displays. Make sure to put the results in a sensible order and that each result contributes a logical and developed solution. It should not just be a list. Avoid being repetitive. 
+Our results revealed consistent patterns in the behavior of the MOE across methods. Both the simulation and theoretical approaches yielded similar trends as $n$ and $p$ varied. Specifically, MOE decreased with increasing sample sizes which was clearly reflected in our heat maps reinforcing the reliability of our findings.
 
-\subsection{Results Subsection}
-Subsections can be helpful for the Results section, too. This can be particularly helpful if you have different questions to answer. 
+\subsection{Basic Simulation}
+When we look at our first basic set of simulations, Figure \ref{plot1} illustrates that as the sample size increases, the MOE decreases. This trend is visible in our plots but also can be seen numerically below.
+\begin{table}[H]
+\centering
+\small
+\captionof{table}{Basic Simulation Table}
+\label{table}
+\begin{tabular}{lcc}
+  \hline
+ Statistic & n=1004 & n=2008 \\ 
+  \hline
+ True Proportion (p) & 0.39 & 0.39 \\ 
+   95\% CI Lower Bound & 0.36 & 0.37 \\ 
+   95\% CI Upper Bound & 0.42 & 0.41 \\ 
+   Estimated Margin of Error & 0.03 & 0.02 \\ 
+   \hline
+\end{tabular}
+\end{table}
+In these simulations we assume a know population value for $p$ which is typically unrealistic in practice. To account for this we turn to resampling methods explore how $p$ behaves when its true value is unknown. We can see that in these simulations our results align with Gallup's claim.
 
+\subsection{Resampling}
+When we examine the results of our second method in Figure \ref{plot2}, we find that our results closely mirror those of our initial simulation when we assumed the true $p$ value. The values shown in the table below also reflect similar outcomes, reinforcing the consistency of our findings. 
+\begin{table}[H]
+\centering
+\small
+\captionof{table}{Resampling Simulation Table}
+\label{table2}
+\begin{tabular}{lc}
+  \hline
+ Statistic & Value \\ 
+  \hline
+  Resampled Proportion & 0.39 \\ 
+    95\% CI Lower Bound & 0.36 \\ 
+    95\% CI Upper Bound & 0.42 \\ 
+    Estimated Margin of Error & 0.03 \\ 
+   \hline
+\end{tabular}
+\end{table}
+Again, we can see that these results are aligned with Gallup's claim. 
+
+\subsection{Simualation over $n$ and $p$ and WIlson Margin of Error}
+The heat map in Figure \ref{plot3}, which represents our simulation, shows that the MOE decreases with larger sample sizes and is smallest when $p$ is near 0 or 1.The Wilson heat map (Figure \ref{plot4}) produces a similar result, further validating our results. Both the simulation which estimated MOE for each $(n,p)$ combination, and the theoretical Wilson method produced consistent outcomes. While the sample size used in the comparison of the MOE below is 1000(rather than the 1004 as in the earlier examples), the values are close enough that we can reasonably expect similar results given the same values of $p$.We can also the MOE when $n$ is 2000 to valid the claim in Gallup's document below in the table.
+\begin{table}[H]
+\centering
+\small
+\captionof{table}{Resampling Simulation Table}
+\begin{tabular}{lc}
+  \hline
+ Method & MOE \\ 
+  \hline
+Simulation ($n$ = 1000, $p$ = 0.39) & 0.030500 \\
+Simulation ($n$ = 2000, $p$ = 0.39) & 0.021250 \\
+Wilson ($n$ = 1000, $p$ = 0.39) & 0.030176 \\ 
+Wilson ($n$ = 2000, $p$ = 0.39) & 0.021357\\
+   \hline
+\end{tabular}
+\end{table}
+Yet again, we see that both of these results reinforce the validity of the claims made by Gallup.
 
 \section{Discussion}
- You should objectively evaluate the evidence you found in the data. Do not embellish or wish-terpet (my made-up phase for making an interpretation you, or the researcher, wants to be true without the data \emph{actually} supporting it). Connect your findings to the existing information you provided in the Introduction.
+Overall, our lab supports Gallop's claims regarding margin of error. Both the basic simulation and resampling simulation confirmed that when $n$ is around 1000, the MOE tends to fall near $\pm$4\% and in our simulations it was even closer to $\pm$3\%. We could speculate that Gallup erred on the side of caution in their reported estimates. In addition, we also confirmed that when $n$ is around 2000 our MOE drops to approximately $\pm$2\%.
 
-Finally, provide some concluding remarks that tie together the entire paper. Think of the last part of the results as abstract-like. Tell the reader what they just consumed -- what's the takeaway message?
+However, we see that the full story isn't quite as simple as Gallup made it out to be. The sample size is only part of the equation. While we did show that an increased sample size does reduce MOE it also depends on the other parameter $p$. When $p$ is closer to 0 or 1 the MOE is smaller as we can not extend beyond the parameter space. 
+
+In summary, when interpreting margin of error and confidence intervals, it is essential to consider both $n$ and $p$, as they jointly influence the precision of our estimate. Ultimately, our analysis verifies Gallup's general claim about margin of error, while also highlighting the importance of context and underlying assumptions. 
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Bibliography
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \vspace{2em}
 
-\noindent\textbf{Bibliography:} Note that when you add citations to your bib.bib file \emph{and}
-you cite them in your document, the bibliography section will automatically populate here.
+%\noindent\textbf{Bibliography:} 
 
 \begin{tiny}
 \bibliography{bib}
@@ -175,6 +221,36 @@ you cite them in your document, the bibliography section will automatically popu
 \onecolumn
 \section{Appendix}
 
-If you have anything extra, you can add it here in the appendix. This can include images or tables that don't work well in the two-page setup, code snippets you might want to share, etc.
+\begin{figure}[H]
+  \begin{center}
+  \includegraphics[width=\textwidth]{basic.sim.plots.pdf}
+  \caption{Basic Sampling Distribution}
+  \label{plot1}
+  \end{center}
+\end{figure}
+
+\begin{figure}[H]
+  \begin{center}
+  \includegraphics[width=\textwidth]{resample.plot.pdf}
+  \caption{Resampling Plot}
+  \label{plot2}
+  \end{center}
+\end{figure}
+
+\begin{figure}[H]
+  \begin{center}
+  \includegraphics[width=\textwidth]{moe.heatmap.pdf}
+  \caption{MOE Heat Map for simulation over $n$ and $p$}
+  \label{plot3}
+  \end{center}
+\end{figure}
+
+\begin{figure}[H]
+  \begin{center}
+  \includegraphics[width=\textwidth]{wilson.heatmap.pdf}
+  \caption{Wilson Heat Map for simulation over $n$ and $p$}
+  \label{plot4}
+  \end{center}
+\end{figure}
 
 \end{document}

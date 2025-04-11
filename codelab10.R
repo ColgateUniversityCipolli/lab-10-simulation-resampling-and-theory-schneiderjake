@@ -4,6 +4,9 @@
 #######################################################################
 library(tidyverse)
 library(patchwork)
+library(ggplot2)
+library(scales)
+library(xtable)
 
 ##################################################
 #Task 1
@@ -11,7 +14,7 @@ library(patchwork)
 ################
 #sample size 10000
 poll.size <- 1004
-poll.probability <- 0.39
+poll.probability <- 0.39 #true prob that someone is satisfied with position of US
 poll.generation <- 10000
 
 simulation1.poll.dat <- tibble(
@@ -22,13 +25,30 @@ ci1 <- quantile(simulation1.poll.dat$prop, probs = c(0.025, 0.975))
 moe1 <- (ci1[2] - ci1[1]) / 2
 
 
-ggplot(simulation1.poll.dat, aes(x = prop)) +
-  geom_histogram(aes(y = after_stat(density)), bins = 20, fill = "blue", alpha = 0.6) +
-  geom_density(color = "red", linewidth = 1) +
-  labs(title = "Simulation 1", x = "Percentage", y = "Density")
 
-
-
+sim.1.plot <- ggplot(simulation1.poll.dat, aes(x = prop)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 30, fill = "#4F81BD", alpha = 0.6) +
+  geom_density(color = "#C0504D", linewidth = 1.2) +
+  
+  # CI bounds
+  geom_vline(xintercept = ci1[1], color = "darkgreen", linetype = "dashed", linewidth = 1) +
+  geom_vline(xintercept = ci1[2], color = "darkgreen", linetype = "dashed", linewidth = 1) +
+  
+  # True p
+  geom_vline(xintercept = 0.39, color = "black", linetype = "solid", linewidth = 1) +
+  
+  # Labels and styling
+  labs(
+    title = "Sampling Distribution of Sample Proportion (n = 1004)",
+    subtitle = "True p = 0.39 with 95% Confidence Interval bounds",
+    x = expression(hat(p)),
+    y = "Density"
+  ) +
+  scale_x_continuous(limits = c(0.34, 0.44), breaks = seq(0.3, 0.5, by = 0.02)) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    plot.subtitle = element_text(color = "gray40")
+  )
 
 
 ################
@@ -38,16 +58,62 @@ poll.probability <- 0.39
 poll.generation <- 10000
 
 simulation1.poll.dat <- tibble(
-  prop = rbinom(poll.generation, poll.size, poll.probability) / poll.size 
-)
-
-ggplot(simulation1.poll.dat, aes(x = prop)) +
-  geom_histogram(aes(y = after_stat(density)), bins = 20, fill = "blue", alpha = 0.6) +
-  geom_density(color = "red", linewidth = 1) +
-  labs(title = "Sampling Distribution of Sample Mean", x = "Sample Mean", y = "Density")
+  prop = rbinom(poll.generation, poll.size, poll.probability) / poll.size )
 
 ci2 <- quantile(simulation1.poll.dat$prop, probs = c(0.025, 0.975))
 moe2 <- (ci2[2] - ci2[1]) / 2
+
+
+# Plot
+sim.2.plot <- ggplot(simulation1.poll.dat, aes(x = prop)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 30, fill = "#4F81BD", alpha = 0.6) +
+  geom_density(color = "#C0504D", linewidth = 1.2) +
+  
+  # CI bounds
+  geom_vline(xintercept = ci2[1], color = "darkgreen", linetype = "dashed", linewidth = 1) +
+  geom_vline(xintercept = ci2[2], color = "darkgreen", linetype = "dashed", linewidth = 1) +
+  
+  # True p
+  geom_vline(xintercept = 0.39, color = "black", linetype = "solid", linewidth = 1) +
+  
+  # Labels and styling
+  labs(
+    title = "Sampling Distribution of Sample Proportion (n = 2008)",
+    subtitle = "True p = 0.39 with 95% Confidence Interval bounds",
+    x = expression(hat(p)),
+    y = "Density"
+  ) +
+  scale_x_continuous(limits = c(0.34, 0.44), breaks = seq(0.3, 0.5, by = 0.02)) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    plot.subtitle = element_text(color = "gray40")
+  )
+
+basic.sim.plots <- (sim.1.plot / sim.2.plot)
+
+ggsave("basic.sim.plots.pdf", plot = basic.sim.plots, width = 7, height = 6)
+
+###############################
+#results for the 2 basic simulations
+results.table <- bind_rows(
+  tibble(
+    `Sample Size` = 1004,
+    `Statistic` = c("True Proportion (p)", "95% CI Lower Bound", "95% CI Upper Bound", "Estimated Margin of Error"),
+    `Value` = round(c(0.39, ci1[1], ci1[2], moe1), 4)
+  ),
+  tibble(
+    `Sample Size` = 2008,
+    `Statistic` = c("True Proportion (p)", "95% CI Lower Bound", "95% CI Upper Bound", "Estimated Margin of Error"),
+    `Value` = round(c(0.39, ci2[1], ci2[2], moe2), 4)
+  )
+)
+
+results.table <- results.table |>
+  pivot_wider(names_from = `Sample Size`, values_from = Value)|>
+  rename( `n=1004` = `1004`  , `n=2008` = `2008`)
+  
+
+
 
 
 ##################################################
@@ -61,7 +127,7 @@ gallup.survery <- tibble(
   )
 )
 
-R <- 1000
+R <- 5000
 resamples <- tibble(p.hat = numeric(R))
 
 for( i in 1:R){
@@ -73,29 +139,44 @@ for( i in 1:R){
   resamples$p.hat[i] <- mean(curr.resample == "satisfied")
 }
 
-
-ggplot(resamples, aes(x = p.hat)) + 
-  # Histogram underneath
-  geom_histogram(aes(y = after_stat(density)), 
-                 bins = 30, fill = "gray90", color = "gray70") +
-  
-  # Bar chart of normalized counts on top
-  geom_bar(aes(y = after_stat(count / sum(count))), 
-           fill = "lightblue", color = "white", width = 0.005) +
-  
-  # Density curve on top
-  geom_density(color = "red", linewidth = 1) +
-  
-  # Styling
-  geom_hline(yintercept = 0) +
-  theme_bw() +
-  xlab(bquote(hat(p))) +
-  ylab("Density") +
-  scale_x_continuous(breaks = round(seq(0.3, 0.5, 0.01), 2))
-
 ci3 <- quantile(resamples$p.hat, probs = c(0.025, 0.975))
 moe3 <- (ci3[2] - ci3[1]) / 2
 
+
+# Create result table
+results.table.resample <- tibble(
+  `Statistic` = c("Resampled Proportion (p̂)", "95% CI Lower Bound", "95% CI Upper Bound", "Estimated Margin of Error"),
+  `Value` = round(c(mean(resamples$p.hat), ci3[1], ci3[2], moe3), 4)
+)
+
+
+# Plot
+resample.plot <- ggplot(resamples, aes(x = p.hat)) + 
+  geom_histogram(aes(y = after_stat(density)), bins = 30, fill = "#4F81BD", alpha = 0.6) +
+  geom_density(color = "#C0504D", linewidth = 1.2) +
+  
+  # CI bounds
+  geom_vline(xintercept = ci3[1], color = "darkgreen", linetype = "dashed", linewidth = 1) +
+  geom_vline(xintercept = ci3[2], color = "darkgreen", linetype = "dashed", linewidth = 1) +
+  
+  # True p
+  geom_vline(xintercept = 0.39, color = "black", linetype = "solid", linewidth = 1) +
+  
+  labs(
+    title = "Bootstrap Resampling of Gallup Survey (n = 1004)",
+    subtitle = "Observed p = 0.39 with 95% Confidence Interval bounds",
+    x = expression(hat(p)),
+    y = "Density"
+  ) +
+  scale_x_continuous(limits = c(0.34, 0.44), breaks = seq(0.3, 0.5, by = 0.02)) +
+
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    plot.subtitle = element_text(color = "gray40")
+  )
+
+ggsave("resample.plot.pdf", plot = resample.plot, width = 8, height = 5)
 
 
 ##################################################
@@ -117,6 +198,7 @@ n.p.sim.results <- sim.grid |>
     }
   ) |>
   ungroup()
+
 
 
 moe.heatmap <- ggplot(n.p.sim.results, aes(x = n, y = p, fill = moe)) +
@@ -145,6 +227,9 @@ moe.heatmap.advanced <- ggplot(n.p.sim.results, aes(x = p, y = n, fill = moe)) +
            label = "MOE decreases with sample size and\nis smallest when p is near 0 or 1", 
            color = "white", size = 3.5)
 
+ggsave("moe.heatmap.pdf", plot = moe.heatmap.advanced, width = 6, height = 6)
+
+
 ##################################################
 #Task 4
 #################################################
@@ -169,16 +254,6 @@ wilson.results <- wilson.sim.grid |>
   ungroup()
 
 
-wilson.heatmap <- ggplot(wilson.results, aes(x = n, y = p, fill = moe)) +
-  geom_raster() +
-  scale_fill_viridis_c(option = "plasma", name = "Margin of Error") +
-  labs(
-    title = "Simulation-Based Wilson Margin of Error by n and p",
-    x = "Sample Size (n)",
-    y = "True Proportion (p)"
-  ) +
-  theme_minimal()
-
 wilson.heatmap.advanced <- ggplot(wilson.results, aes(x = p, y = n, fill = moe)) +
   geom_raster() +
   scale_fill_viridis_c(option = "viridis") +
@@ -192,6 +267,9 @@ wilson.heatmap.advanced <- ggplot(wilson.results, aes(x = p, y = n, fill = moe))
            label = "Wilson method provides\nmore accurate MOE estimates", 
            color = "white", size = 3.5)
 
+ggsave("wilson.heatmap.pdf", plot = wilson.heatmap.advanced, width = 6, height = 6)
+
+
 results.comparison <- tibble(
   Method = c("Simulation (n=1004)", "Simulation (n=2008)", "Bootstrap (n=1004)", "Wilson (n=1004, p=0.39)"),
   MOE = c(
@@ -202,70 +280,19 @@ results.comparison <- tibble(
   )
 )
 
+moe.sim.1000 <- n.p.sim.results |>
+  filter(n == 1000, p == 0.39) |>
+  pull(moe)
 
+# Wilson MOE at same values
+moe.wilson.1000 <- wilson.margin(1000, 0.39)
 
-##################################################
-#optional coding challenge 
-#################################################
+# Create formatted comparison table
+results.comparison <- tibble(
+  Method = c("Simulation (n = 1000, p = 0.39)", "Wilson (n = 1000, p = 0.39)"),
+  MOE = c(moe.sim.1000, moe.wilson.1000)
+) |>
+  mutate(MOE = round(MOE, 6))
 
-bootstrap_n.values <- seq(100, 800, 100)  # Using fewer n values
-bootstrap_p.values <- seq(0.1, 0.9, 0.1)  # Using fewer p values
-bootstrap_sim.count <- 10   # Number of simulations per n,p combination
-bootstrap_resample.count <- 100  # Number of bootstrap resamples per simulation
-
-# Create grid of all n,p combinations
-bootstrap.grid <- expand_grid(n = bootstrap_n.values, p = bootstrap_p.values)
-
-# Initialize results data frame
-bootstrap.results <- bootstrap.grid |>
-  rowwise() |>
-  mutate(
-    moe = {
-      # Store MOEs from multiple simulations
-      sim_moes <- numeric(bootstrap_sim.count)
-      
-      for(sim in 1:bootstrap_sim.count) {
-        # 1. Generate a random poll result
-        poll_data <- tibble(
-          response = c(
-            rep("success", rbinom(1, n, p)),
-            rep("failure", n - rbinom(1, n, p))
-          )
-        )
-        
-        # 2. Perform bootstrap resampling
-        resample_props <- numeric(bootstrap_resample.count)
-        for(i in 1:bootstrap_resample.count) {
-          # Take a bootstrap resample
-          curr_resample <- sample(poll_data$response, size = n, replace = TRUE)
-          # Compute proportion
-          resample_props[i] <- mean(curr_resample == "success")
-        }
-        
-        # 3. Calculate MOE for this simulation
-        ci <- quantile(resample_props, probs = c(0.025, 0.975))
-        sim_moes[sim] <- (ci[2] - ci[1]) / 2
-      }
-      
-      # Return average MOE across all simulations
-      mean(sim_moes)
-    }
-  ) |>
-  ungroup()
-
-# Create heatmap for bootstrap MOEs
-bootstrap_heatmap <- ggplot(bootstrap.results, aes(x = p, y = n, fill = moe)) +
-  geom_raster() +
-  scale_fill_viridis_c(option = "cividis") +
-  labs(title = "Bootstrap Margin of Error by Sample Size and Proportion",
-       subtitle = "Average of multiple bootstrap simulations",
-       x = "Proportion (p)",
-       y = "Sample Size (n)",
-       fill = "MOE") +
-  theme_minimal() +
-  geom_contour(aes(z = moe), breaks = c(0.02, 0.03, 0.04, 0.05, 0.06), color = "white") +
-  annotate("text", x = 0.5, y = 700, 
-           label = "Bootstrap MOE follows similar patterns\nas simulation and theoretical approaches", 
-           color = "white", size = 3.5)
 
 
